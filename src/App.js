@@ -222,7 +222,7 @@ const App = () => {
       // Add the received game to gameHistoryByNames 
       global.gameHistoryByNames.forEach((elem) => {
         if (elem.name === dataObj.playerA.name || elem.name === dataObj.playerB.name) {
-          elem.games.push(dataObj);
+          elem.games.unshift(dataObj);
         }
       })
 
