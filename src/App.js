@@ -12,43 +12,37 @@
     ...
   ]
 
-  But turns out the biggest bottleneck is in rendering:
-
-  Rendering the "Games Played" table slows down the page a lot after there's a lot of games fetched.
-  I was going to fix it by using react-virtualized to only render visible part of the screen but I couldn't get it done in time.
-  Please take into account that rendering the table is the only thing slowing down the page. And it is relatively easy to fix but I ran out of time.
+  EDIT: I implemented "load more" functionality for the table and now the rendering isn't slowing down the page anymore.
 
 */
 
 import React from 'react'
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import { Column, Table, SortDirection, AutoSizer } from "react-virtualized";
 
 const global = {
   socket: new WebSocket("wss://bad-api-assignment.reaktor.com/rps/live"),
-  gameHistoryByNames: []
+  gameHistoryByNames: [],
+  gamesPlayedItemsLoaded: 0,
+  gamesPlayedItemsToLoad: 100,
+  playersData: []
 };
 
 const InProgressTable = ({elem}) => {
   return (
-      <tbody>
-        <tr>
-          <td>{elem.playerA.name}</td>
-          <td>{elem.playerB.name}</td>
-        </tr>
-      </tbody>
+    <tr>
+      <td>{elem.playerA.name}</td>
+      <td>{elem.playerB.name}</td>
+    </tr>
     )}
 
-const PlayedTable = ({elem}) => {
+const PlayedTable = ({elem, index}) => {
   return (
-      <tbody>
-        <tr>
-          <td>{new Date(elem.t).toLocaleString()}</td>
-          <td>{elem.playerA.name} [{elem.playerA.played}]</td>
-          <td>{elem.playerB.name} [{elem.playerB.played}]</td>
-        </tr>
-      </tbody>
+    <tr>
+      <td>{new Date(elem.t).toLocaleString()}</td>
+      <td>{elem.playerA.name} [{elem.playerA.played}]</td>
+      <td>{elem.playerB.name} [{elem.playerB.played}]</td>
+    </tr>
     )}
 
 const Form = (props) => {
@@ -71,9 +65,34 @@ const Form = (props) => {
     </form>
   )}
 
+const LoadMore = (props) => {
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    props.function();
+  }
+
+  const handleChange = (event) => {
+    global.gamesPlayedItemsToLoad = parseInt(event.target.value);
+  }
+
+  return(
+    <form onSubmit={handleSubmit}>
+      <button type="submit">Load More...</button>
+      <br/>
+      <p>Load </p>
+      <select name="options" id="loadMoreOptions" defaultValue={100} onChange={handleChange}>
+        <option value={100}>100</option>
+        <option value={500}>500</option>
+        <option value={1000}>1000</option>
+        <option value={5000}>5000</option>
+      </select>
+      <p> games </p>
+    </form>
+  )}
+
 const ReturnPlayerData = ({database, searchText}) => {
   const playerData = database.find(elem => elem.name === searchText);
-  if(playerData === undefined || playerData.length === 0) {
+  if (playerData === undefined || playerData.length === 0) {
     return (<div className="playerInformationData"><p><b>Player not found</b></p></div>);
   }
 
@@ -145,6 +164,7 @@ const App = () => {
       fetch(cursor)
         .then(response => {
           if (response.status !== 200) {
+            fetchCursor(cursor);
             throw new Error(`Error in fetchCursor with status code ${response.status}`);
           }
           return response.json();
@@ -216,18 +236,24 @@ const App = () => {
   }
 
   const searchName = (text) => {
-    let playersData = global.gameHistoryByNames.find(elem => elem.name === text);
+    global.gamesPlayedItemsLoaded = global.gamesPlayedItemsToLoad;
+    global.playersData = global.gameHistoryByNames.find(elem => elem.name === text);
 
-    if (playersData !== undefined) {
-      playersData = playersData.games.map(i => (<PlayedTable elem={i} key={i.gameId}/>));
+    if (global.playersData !== undefined) {
+      global.playersData = global.playersData.games.map((elem) => (<PlayedTable elem={elem} key={elem.gameId}/>));
     }
     else {
-      playersData = null;
+      global.playersData = [];
     }
 
     setPlayerInformation(<ReturnPlayerData database={global.gameHistoryByNames} searchText={text}/>);
     setSearchedPlayerName("By ".concat(text));
-    setPlayerGames(playersData);
+    setPlayerGames(global.playersData.slice(0, global.gamesPlayedItemsLoaded));
+  }
+
+  const loadMorePages = () => {
+    global.gamesPlayedItemsLoaded += global.gamesPlayedItemsToLoad;
+    setPlayerGames(global.playersData.slice(0, global.gamesPlayedItemsLoaded));
   }
 
   return (
@@ -243,10 +269,12 @@ const App = () => {
             <th>Player A</th>
             <th>Player B</th>
           </tr>
-        </thead>
-        {liveGames.map(i => (
-            <InProgressTable elem={i} key={i.gameId}/>
-          ))}
+          </thead>
+          <tbody>
+            {liveGames.map((elem) => (
+                <InProgressTable elem={elem} key={elem.gameId}/>
+              ))}
+          </tbody>
         </table>
       </div>
       <div className="playerInformation">
@@ -260,14 +288,17 @@ const App = () => {
         <h1>Games Played {searchedPlayerName}</h1>
         <table>
           <thead>
-          <tr>
-            <th>Time</th>
-            <th>Player A</th>
-            <th>Player B</th>
-          </tr>
-        </thead>
-          {playerGames}
+            <tr>
+              <th>Time</th>
+              <th>Player A</th>
+              <th>Player B</th>
+            </tr>
+          </thead>
+          <tbody>
+            {playerGames}
+          </tbody>
         </table>
+        <LoadMore function={loadMorePages}/>
       </div>
     </div>
   )
