@@ -19,6 +19,10 @@
 import React from 'react'
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
+import { InProgressTable, PlayedTable } from './components/tables'
+import { Form } from './components/form'
+import { LoadMore } from './components/loadMore'
+import { ReturnPlayerData } from './components/returnPlayerData'
 
 const global = {
   socket: new WebSocket("wss://bad-api-assignment.reaktor.com/rps/live"),
@@ -27,127 +31,6 @@ const global = {
   gamesPlayedItemsToLoad: 100,
   playersData: []
 };
-
-const InProgressTable = ({elem}) => {
-  return (
-    <tr>
-      <td>{elem.playerA.name}</td>
-      <td>{elem.playerB.name}</td>
-    </tr>
-    )}
-
-const PlayedTable = ({elem, index}) => {
-  return (
-    <tr>
-      <td>{new Date(elem.t).toLocaleString()}</td>
-      <td>{elem.playerA.name} [{elem.playerA.played}]</td>
-      <td>{elem.playerB.name} [{elem.playerB.played}]</td>
-    </tr>
-    )}
-
-const Form = (props) => {
-  const [text, setText] = useState("");
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    props.function(text);
-    setText("");
-  }
-
-  const handleChange = (event) => {
-    setText(event.target.value);
-  }
-
-  return(
-    <form onSubmit={handleSubmit}>
-      <input value={text} placeholder="Maija Mehiläinen" onChange={handleChange}/>
-      <button type="submit">Search</button>
-    </form>
-  )}
-
-const LoadMore = (props) => {
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    props.function();
-  }
-
-  const handleChange = (event) => {
-    global.gamesPlayedItemsToLoad = parseInt(event.target.value);
-  }
-
-  return(
-    <form onSubmit={handleSubmit}>
-      <button type="submit">Load More...</button>
-      <br/>
-      <p>Load </p>
-      <select name="options" id="loadMoreOptions" defaultValue={100} onChange={handleChange}>
-        <option value={100}>100</option>
-        <option value={500}>500</option>
-        <option value={1000}>1000</option>
-        <option value={5000}>5000</option>
-      </select>
-      <p> games </p>
-    </form>
-  )}
-
-const ReturnPlayerData = ({database, searchText}) => {
-  const playerData = database.find(elem => elem.name === searchText);
-  if (playerData === undefined || playerData.length === 0) {
-    return (<div className="playerInformationData"><p><b>Player not found</b></p></div>);
-  }
-
-  let rocks = 0;
-  let papers = 0;
-  let scissors = 0;
-  let wins = 0;
-  let totalMatches = playerData.games.length;
-  let player = undefined;
-  let enemy = undefined;
-  let mostPlayedHand = undefined;
-
-  playerData.games.forEach((game) => {
-    if (game.playerA.name === searchText) {
-      player = game.playerA;
-      enemy = game.playerB;
-    }
-    else {
-      player = game.playerB;
-      enemy = game.playerA;
-    }
-
-    // Draw will be counted as loss
-    if (player.played === "ROCK") {
-      rocks += 1;
-      if(enemy.played === "SCISSORS") { wins += 1; }
-    }
-
-    else if (player.played === "PAPER") {
-      papers += 1;
-      if(enemy.played === "ROCK") { wins += 1; }
-    }
-
-    else if (player.played === "SCISSORS") {
-      scissors += 1;
-      if (enemy.played === "PAPER") { wins += 1; }
-    }
-
-    let arr = [rocks, papers, scissors];
-    let index = arr.indexOf(Math.max.apply(null, arr));
-
-    if (index === 0) { mostPlayedHand = "ROCK"; }
-    if (index === 1) { mostPlayedHand = "PAPER"; }
-    if (index === 2) { mostPlayedHand = "SCISSORS"; }
-  })
-  return (
-    <div className="playerInformationData">
-      <p><b>Name: </b><br/>{player.name}</p>
-      <p><b>Total Games: </b><br/>{totalMatches}</p>
-      <p><b>Wins: </b><br/>{wins}</p>
-      <p><b>Win Ratio: </b><br/>{Math.round(100 * wins / totalMatches)} %</p>
-      <p><b>Most Played Hand: </b><br/>{mostPlayedHand}</p>
-    </div>
-  )
-}
 
 const App = () => {
   const [liveGames, setLiveGames] = useState([]);
@@ -231,7 +114,6 @@ const App = () => {
         liveGamesCopy = liveGamesCopy.filter(item => item.gameId !== dataObj.gameId);
       }
     }
-
     setLiveGames(liveGamesCopy);
   }
 
