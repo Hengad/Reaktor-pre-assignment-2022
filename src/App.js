@@ -24,7 +24,7 @@ import { Form } from './components/form'
 import { LoadMore } from './components/loadMore'
 import { ReturnPlayerData } from './components/returnPlayerData'
 
-const global = {
+export const global = {
   socket: new WebSocket("wss://bad-api-assignment.reaktor.com/rps/live"),
   gameHistoryByNames: [],
   gamesPlayedItemsLoaded: 0,

@@ -1,4 +1,5 @@
 import React from 'react'
+import { global } from '../App'
 
 const LoadMore = (props) => {
     const handleSubmit = (event) => {
